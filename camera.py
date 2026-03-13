@@ -1,41 +1,69 @@
+import cv2
+import numpy as np
 from cyberwave import Cyberwave
+
 from dotenv import load_dotenv
-import asyncio
 import os
 
+# Constants
 load_dotenv()
-token = os.getenv("CYBERWAVE_API_KEY")
+CYBERWAVE_API_KEY: str = os.getenv("CYBERWAVE_API_KEY")
+ASSET_KEY: str         = os.getenv("ASSET_KEY")
+TWIN_ID: str           = os.getenv("TWIN_CAMERA_ID")
+ENVIRONMENT_ID: str    = os.getenv("ENVIRONMENT_ID")
 
-client = Cyberwave(
-    token=token,
+cw = Cyberwave(api_key=CYBERWAVE_API_KEY)
+robot = cw.twin(
+    ASSET_KEY,
+    twin_id=TWIN_ID,
+    environment_id=ENVIRONMENT_ID
 )
 
-# Get or create a twin to stream to
-twin_uuid = os.getenv("TWIN_ID")
+# ── Single frame as numpy array ───────────────────────────────────────
 
-# Create camera streamer
-streamer = client.video_stream(
-    twin_uuid=twin_uuid,
-    camera_id=0,  # Default camera (change if you have multiple cameras)
-    fps=10,  # Frames per second, optional
+frame = robot.capture_frame("numpy")  # BGR numpy array
+
+print(f"{frame = }")
+
+# Draw a timestamp overlay
+cv2.putText(
+    frame,
+    "Cyberwave live",
+    (10, 30),
+    cv2.FONT_HERSHEY_SIMPLEX,
+    0.8,
+    (0, 255, 0),
+    2,
 )
 
-async def main():
-    try:
-        await streamer.start()
-        print("Stream is active. Press Ctrl+C to stop...")
+cv2.imwrite("annotated_frame.jpg", frame)
+print("Saved annotated_frame.jpg")
 
-        # Keep streaming until interrupted
-        while True:
-            await asyncio.sleep(1)
+# ── Edge detection ────────────────────────────────────────────────────
 
-    except KeyboardInterrupt:
-        print("Stopping stream...")
-    except Exception as e:
-        print(f"Error during streaming: {e}")
-    finally:
-        await streamer.stop()
-        client.disconnect()
-        print("Stream stopped and resources cleaned up")
+gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+edges = cv2.Canny(gray, 50, 150)
+cv2.imwrite("edges.jpg", edges)
+print("Saved edges.jpg")
 
-asyncio.run(main())
+# ── Batch capture → side-by-side composite ────────────────────────────
+
+frames = robot.capture_frames(3, interval_ms=500, format="numpy")
+composite = np.hstack(frames)
+cv2.imwrite("composite.jpg", composite)
+print(f"Saved composite.jpg ({len(frames)} frames stitched)")
+
+# ── Using the twin.camera namespace ───────────────────────────────────
+
+frame2 = robot.camera.read()  # numpy by default, like cv2.VideoCapture
+path = robot.camera.snapshot()  # temp JPEG file
+print(f"Snapshot saved to {path}")
+
+# ── PIL example: resize + thumbnail ───────────────────────────────────
+
+pil_frame = robot.capture_frame("pil")
+pil_frame.thumbnail((320, 240))
+pil_frame.save("thumbnail.jpg")
+print("Saved thumbnail.jpg (320x240)")
+
+cw.disconnect()
