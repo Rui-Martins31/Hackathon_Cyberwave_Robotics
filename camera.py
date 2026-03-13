@@ -12,58 +12,63 @@ ASSET_KEY: str         = os.getenv("ASSET_KEY")
 TWIN_ID: str           = os.getenv("TWIN_CAMERA_ID")
 ENVIRONMENT_ID: str    = os.getenv("ENVIRONMENT_ID")
 
+print("\n")
+
 cw = Cyberwave(api_key=CYBERWAVE_API_KEY)
-robot = cw.twin(
-    ASSET_KEY,
+camera = cw.twin(
+    "cyberwave/standard-cam",
     twin_id=TWIN_ID,
     environment_id=ENVIRONMENT_ID
 )
 
 # ── Single frame as numpy array ───────────────────────────────────────
 
-frame = robot.capture_frame("numpy")  # BGR numpy array
+# camera.start_streaming()
+camera.start_streaming(fps=30, camera_id=TWIN_ID)
 
-print(f"{frame = }")
+# frame = camera.capture_frame("numpy")  # BGR numpy array
 
-# Draw a timestamp overlay
-cv2.putText(
-    frame,
-    "Cyberwave live",
-    (10, 30),
-    cv2.FONT_HERSHEY_SIMPLEX,
-    0.8,
-    (0, 255, 0),
-    2,
-)
+# print(f"{frame = }")
 
-cv2.imwrite("annotated_frame.jpg", frame)
-print("Saved annotated_frame.jpg")
+# # Draw a timestamp overlay
+# cv2.putText(
+#     frame,
+#     "Cyberwave live",
+#     (10, 30),
+#     cv2.FONT_HERSHEY_SIMPLEX,
+#     0.8,
+#     (0, 255, 0),
+#     2,
+# )
 
-# ── Edge detection ────────────────────────────────────────────────────
+# cv2.imwrite("annotated_frame.jpg", frame)
+# print("Saved annotated_frame.jpg")
 
-gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-edges = cv2.Canny(gray, 50, 150)
-cv2.imwrite("edges.jpg", edges)
-print("Saved edges.jpg")
+# # ── Edge detection ────────────────────────────────────────────────────
 
-# ── Batch capture → side-by-side composite ────────────────────────────
+# gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+# edges = cv2.Canny(gray, 50, 150)
+# cv2.imwrite("edges.jpg", edges)
+# print("Saved edges.jpg")
 
-frames = robot.capture_frames(3, interval_ms=500, format="numpy")
-composite = np.hstack(frames)
-cv2.imwrite("composite.jpg", composite)
-print(f"Saved composite.jpg ({len(frames)} frames stitched)")
+# # ── Batch capture → side-by-side composite ────────────────────────────
 
-# ── Using the twin.camera namespace ───────────────────────────────────
+# frames = camera.capture_frames(3, interval_ms=500, format="numpy")
+# composite = np.hstack(frames)
+# cv2.imwrite("composite.jpg", composite)
+# print(f"Saved composite.jpg ({len(frames)} frames stitched)")
 
-frame2 = robot.camera.read()  # numpy by default, like cv2.VideoCapture
-path = robot.camera.snapshot()  # temp JPEG file
-print(f"Snapshot saved to {path}")
+# # ── Using the twin.camera namespace ───────────────────────────────────
 
-# ── PIL example: resize + thumbnail ───────────────────────────────────
+# frame2 = camera.camera.read()  # numpy by default, like cv2.VideoCapture
+# path = camera.camera.snapshot()  # temp JPEG file
+# print(f"Snapshot saved to {path}")
 
-pil_frame = robot.capture_frame("pil")
-pil_frame.thumbnail((320, 240))
-pil_frame.save("thumbnail.jpg")
-print("Saved thumbnail.jpg (320x240)")
+# # ── PIL example: resize + thumbnail ───────────────────────────────────
 
-cw.disconnect()
+# pil_frame = camera.capture_frame("pil")
+# pil_frame.thumbnail((320, 240))
+# pil_frame.save("thumbnail.jpg")
+# print("Saved thumbnail.jpg (320x240)")
+
+# cw.disconnect()
